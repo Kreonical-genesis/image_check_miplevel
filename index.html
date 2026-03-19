@@ -81,7 +81,7 @@
             background: rgba(16, 185, 129, 0.1);
         }
 
-        .header-right {
+            .header-right {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -90,6 +90,25 @@
         .author-text {
             font-size: 0.8rem;
             color: var(--text-dim);
+        }
+
+        .read-more-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .read-more-btn:hover {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.1);
         }
 
         .github-btn {
@@ -524,6 +543,11 @@
                             <br>
                             <div data-i18n="mipmapDesc4"><strong>Hi-res packs (256x+):</strong> May need mods (Better Mipmaps) to add more levels.</div>
                         </div>
+                        <div style="margin-top: 12px; text-align: center;">
+                            <a href="https://github.com/Kreonical-genesis/image_check_miplevel/blob/main/README.md" target="_blank" class="read-more-btn" data-i18n="readMore">
+                                Read more →
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -571,6 +595,7 @@
                 mipmapDesc2: '<strong>How it works:</strong> Creates downscaled copies (÷2 each level) for distant objects. Reduces aliasing & improves FPS.',
                 mipmapDesc3: '<strong>Vanilla max:</strong> 4 levels. If any texture can\'t create full chain, mip level drops for <strong style="color: var(--warning);">ALL</strong> textures (see log: "limits mip level").',
                 mipmapDesc4: '<strong>Hi-res packs (256x+):</strong> May need mods (Better Mipmaps) to add more levels.',
+                readMore: 'Read more →',
                 results: '4. RESULTS',
                 ready: 'Ready',
                 emptyText: 'Drop a ZIP/JAR file to analyze textures',
@@ -617,6 +642,7 @@
                 mipmapDesc2: '<strong>Как работает:</strong> Создаёт уменьшенные копии (÷2 каждый уровень) для дальних объектов. Уменьшает рябь и улучшает FPS.',
                 mipmapDesc3: '<strong>Ванильный максимум:</strong> 4 уровня. Если текстура не может создать полную цепочку, уровень падает для <strong style="color: var(--warning);">ВСЕХ</strong> текстур (лог: "limits mip level").',
                 mipmapDesc4: '<strong>Hi-res паки (256x+):</strong> Могут требовать моды (Better Mipmaps) для добавления уровней.',
+                readMore: 'Подробнее →',
                 results: '4. РЕЗУЛЬТАТЫ',
                 ready: 'Готово',
                 emptyText: 'Перетащите ZIP/JAR файл для анализа текстур',
