@@ -394,6 +394,19 @@
             text-transform: uppercase;
         }
 
+        .file-animated {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
         .copy-btn {
             background: var(--accent);
             color: white;
@@ -555,8 +568,11 @@
         </aside>
 
         <section class="workspace">
-            <div class="panel-header" style="display: flex; justify-content: space-between;">
-                <span data-i18n="results">4. RESULTS</span>
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span data-i18n="results">4. RESULTS</span>
+                    <span id="fileName" style="font-size: 0.75rem; font-weight: normal; color: var(--accent); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                </div>
                 <span id="statusText" style="font-size: 0.85rem; font-weight: normal; color: var(--text-dim); text-transform: none;" data-i18n="ready">Ready</span>
             </div>
             <div class="results-container" id="resultsContainer">
@@ -720,6 +736,17 @@
             return { class: 'bad', text: `${levels} lvl` };
         }
 
+        function detectAnimatedTextures(zip) {
+            const animatedTextures = new Set();
+            Object.keys(zip.files).forEach(name => {
+                if (name.toLowerCase().endsWith('.png.mcmeta') && !zip.files[name].dir) {
+                    const pngPath = name.slice(0, -7);
+                    animatedTextures.add(pngPath);
+                }
+            });
+            return animatedTextures;
+        }
+
         let lastResults = null;
 
         async function handleFile(file) {
@@ -728,6 +755,8 @@
                 alert(t('alertFormat'));
                 return;
             }
+
+            document.getElementById('fileName').textContent = file.name;
 
             resultsContainer.innerHTML = `
                 <div class="progress">
@@ -741,6 +770,7 @@
                 const zip = await JSZip.loadAsync(file);
                 const textures = [];
                 const errors = [];
+                const animatedTextures = detectAnimatedTextures(zip);
 
                 const pngFiles = Object.keys(zip.files).filter(name =>
                     name.toLowerCase().endsWith('.png') && !zip.files[name].dir
@@ -758,7 +788,8 @@
                             height: img.height,
                             mipLevels: countMipmapLevels(img.width, img.height),
                             size: fileData.byteLength,
-                            npot: !isPowerOfTwo(img.width) || !isPowerOfTwo(img.height)
+                            npot: !isPowerOfTwo(img.width) || !isPowerOfTwo(img.height),
+                            animated: animatedTextures.has(filename)
                         });
 
                         img.close();
@@ -857,7 +888,8 @@
         function renderSection(title, items, type) {
             const copyText = items.map(item => {
                 const npotTag = item.npot ? ' [NPOT]' : '';
-                return `${item.path} (${item.width}x${item.height}${npotTag}, ${formatBytes(item.size)}, ${item.mipLevels} mip lvls)`;
+                const animTag = item.animated ? ' [ANIMATED]' : '';
+                return `${item.path} (${item.width}x${item.height}${npotTag}${animTag}, ${formatBytes(item.size)}, ${item.mipLevels} mip lvls)`;
             }).join('\n');
 
             return `
@@ -871,6 +903,7 @@
                         ${items.map(item => {
                             const mipStatus = getMipStatus(item.mipLevels);
                             const npotBadge = item.npot ? '<span class="file-npot">NPOT</span>' : '';
+                            const animBadge = item.animated ? '<span class="file-animated" title="Has .mcmeta animation">🎬 ANIM</span>' : '';
                             return `
                                 <div class="file-item">
                                     <span class="file-path">${item.path}</span>
@@ -878,6 +911,7 @@
                                     <span class="file-size">${formatBytes(item.size)}</span>
                                     <span class="file-mip ${mipStatus.class}">${mipStatus.text}</span>
                                     ${npotBadge}
+                                    ${animBadge}
                                 </div>
                             `;
                         }).join('')}
