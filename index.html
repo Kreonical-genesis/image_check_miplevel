@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResourcePack Mipmap Checker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg-base: #0f1115;
+            --bg-panel: #1a1c23;
+            --bg-input: #272a35;
+            --border-color: #2e323f;
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --text-main: #f3f4f6;
+            --text-dim: #9ca3af;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --radius: 6px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-panel); }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        body {
+            background: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            height: 60px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+            flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .brand-area { display: flex; align-items: center; gap: 15px; }
+        .header-title { font-weight: 700; color: #fff; font-size: 1.2em; letter-spacing: 0.5px; }
+        .header-icon { font-size: 1.3em; }
+
+        .mode-badge {
+            font-size: 0.75rem;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background-color: var(--accent);
+        }
+
+        .lang-btn {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .lang-btn:hover {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        #main-view {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 12px 15px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            color: var(--text-dim);
+            flex-shrink: 0;
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group label { font-size: 0.9rem; color: var(--text-dim); font-weight: 500; }
+
+        .sidebar-main {
+            width: 420px;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .tech-panel {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .panel-content {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.02);
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.1);
+        }
+        .drop-zone-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .drop-zone-text {
+            font-size: 0.95rem;
+            color: var(--text-dim);
+        }
+        .drop-zone-subtext {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 8px;
+        }
+        .supported-formats {
+            font-size: 0.7rem;
+            color: #6b7280;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        .file-list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-card {
+            background: var(--bg-input);
+            padding: 15px;
+            border-radius: var(--radius);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+        .stat-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .stat-value { font-size: 1.8rem; font-weight: 700; }
+        .stat-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin-top: 4px; }
+
+        .stat-card.error .stat-value { color: var(--error); }
+        .stat-card.warning .stat-value { color: var(--warning); }
+        .stat-card.success .stat-value { color: var(--success); }
+
+        .legend-box {
+            background: var(--bg-input);
+            padding: 12px;
+            border-radius: var(--radius);
+            font-size: 0.8rem;
+        }
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--accent);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+            color: var(--text-dim);
+        }
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        .legend-hint {
+            font-size: 0.7rem;
+            color: #6b7280;
+            margin-top: 4px;
+            padding-left: 18px;
+        }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--bg-base);
+        }
+
+        .results-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .results-section {
+            margin-bottom: 15px;
+            background: var(--bg-panel);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .section-header:hover { background: rgba(255,255,255,0.03); }
+        .section-header.open { border-bottom: none; }
+
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-count {
+            background: var(--error);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .section-header.warning .section-count { background: var(--warning); }
+        .section-header.success .section-count { background: var(--success); }
+
+        .section-toggle {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .section-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .section-content.open { max-height: 500px; overflow-y: auto; }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            gap: 12px;
+            font-size: 0.85rem;
+            transition: background 0.15s;
+        }
+        .file-item:hover { background: rgba(255,255,255,0.03); }
+        .file-item:last-child { border-bottom: none; }
+
+        .file-path {
+            flex: 1;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: var(--text-main);
+            word-break: break-all;
+            font-size: 0.8rem;
+        }
+
+        .file-dims {
+            background: var(--bg-input);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+
+        .file-size {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .file-mip {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .file-mip.ok { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .file-mip.bad { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+        .file-mip.warn { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+
+        .file-npot {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .copy-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 12px 15px;
+        }
+        .copy-btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .copy-btn.copied { background: var(--success); }
+
+        .empty-message {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+        .empty-message .icon { font-size: 3rem; margin-bottom: 15px; }
+
+        .success-message {
+            text-align: center;
+            padding: 40px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            border-radius: var(--radius);
+        }
+        .success-message .icon { font-size: 3rem; margin-bottom: 10px; }
+        .success-message .text { color: var(--success); font-weight: 600; }
+
+        .progress {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 900px) {
+            #main-view { flex-direction: column; overflow-y: auto; }
+            .sidebar-main { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); }
+            .workspace { min-height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand-area">
+            <span class="header-icon">📦</span>
+            <div class="header-title" data-i18n="title">Mipmap Checker</div>
+            <div class="mode-badge" data-i18n="badge">Mipmap Analyzer</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <button class="lang-btn" id="langBtn" onclick="toggleLanguage()">RU</button>
+        </div>
+    </header>
+
+    <main id="main-view">
+        <aside class="sidebar-main">
+            <div class="tech-panel">
+                <div class="panel-header" data-i18n="selectArchive">1. SELECT ARCHIVE</div>
+                <div class="panel-content">
+                    <div class="drop-zone" id="dropZone">
+                        <div class="drop-zone-icon">📁</div>
+                        <div class="drop-zone-text" data-i18n="dropText">Drop ZIP / JAR archive here</div>
+                        <div class="drop-zone-subtext" data-i18n="dropSubtext">or click to select file</div>
+                        <div class="supported-formats" data-i18n="formats">Supported: .zip, .jar</div>
+                        <input type="file" id="fileInput" accept=".zip,.jar" style="display: none;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="tech-panel">
+                <div class="panel-header" data-i18n="statistics">2. STATISTICS</div>
+                <div class="panel-content">
+                    <div class="stats-grid" id="statsGrid">
+                        <div class="stat-card error">
+                            <div class="stat-value" id="statBad">0</div>
+                            <div class="stat-label" data-i18n="critical">&lt;2 lvl</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-value" id="statWarn">0</div>
+                            <div class="stat-label" data-i18n="limited">2-3 lvl</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-value" id="statGood">0</div>
+                            <div class="stat-label" data-i18n="full">4+ lvl</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statTotal" style="color: var(--text-main);">0</div>
+                            <div class="stat-label" data-i18n="total">Total</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tech-panel">
+                <div class="panel-header" data-i18n="info">3. INFO</div>
+                <div class="panel-content">
+                    <div class="legend-box">
+                        <div class="legend-title" data-i18n="mipmapLevels">Mipmap Levels</div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--success);"></div>
+                            <span data-i18n="levelGood">4+ levels — full support</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--warning);"></div>
+                            <span data-i18n="levelWarn">2-3 levels — limited</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--error);"></div>
+                            <span data-i18n="levelBad">0-1 levels — no support</span>
+                        </div>
+                        <div class="legend-hint" data-i18n="levelHint">Ex: 64x64 → 6 lvl, 16x16 → 4 lvl, 20x20 → 1 lvl</div>
+                    </div>
+                    <div class="legend-box" style="margin-top: 10px;">
+                        <div class="legend-title" data-i18n="npotTitle">NPOT — Non-Power-of-Two</div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ff6b81;"></div>
+                            <span data-i18n="npotDesc">Not power of 2 (20x20, 48x48)</span>
+                        </div>
+                        <div class="legend-hint" data-i18n="npotHint">Ex: 16x16, 64x64 — POT | 20x20, 30x30 — NPOT</div>
+                    </div>
+                    <div class="legend-box" style="margin-top: 10px;">
+                        <div class="legend-title" data-i18n="whatIsMipmap">What is Mipmap?</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim); line-height: 1.4;">
+                            <div data-i18n="mipmapDesc1"><strong style="color: var(--accent);">Only block/item atlas affected</strong> (terrain.png, items.png). GUI uses separate atlas.</div>
+                            <br>
+                            <div data-i18n="mipmapDesc2"><strong>How it works:</strong> Creates downscaled copies (÷2 each level) for distant objects. Reduces aliasing & improves FPS.</div>
+                            <br>
+                            <div data-i18n="mipmapDesc3"><strong>Vanilla max:</strong> 4 levels. If any texture can't create full chain, mip level drops for <strong style="color: var(--warning);">ALL</strong> textures (see log: "limits mip level").</div>
+                            <br>
+                            <div data-i18n="mipmapDesc4"><strong>Hi-res packs (256x+):</strong> May need mods (Better Mipmaps) to add more levels.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <section class="workspace">
+            <div class="panel-header" style="display: flex; justify-content: space-between;">
+                <span data-i18n="results">4. RESULTS</span>
+                <span id="statusText" style="font-size: 0.85rem; font-weight: normal; color: var(--text-dim); text-transform: none;" data-i18n="ready">Ready</span>
+            </div>
+            <div class="results-container" id="resultsContainer">
+                <div class="empty-message">
+                    <div class="icon">📦</div>
+                    <div data-i18n="emptyText">Drop a ZIP/JAR file to analyze textures</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const translations = {
+            en: {
+                title: 'ResourcePack Mipmap Checker',
+                badge: 'Mipmap Analyzer',
+                selectArchive: '1. SELECT ARCHIVE',
+                dropText: 'Drop ZIP / JAR archive here',
+                dropSubtext: 'or click to select file',
+                formats: 'Supported: .zip, .jar',
+                statistics: '2. STATISTICS',
+                critical: '<2 lvl',
+                limited: '2-3 lvl',
+                full: '4+ lvl',
+                total: 'Total',
+                info: '3. INFO',
+                mipmapLevels: 'Mipmap Levels',
+                levelGood: '4+ levels — full support',
+                levelWarn: '2-3 levels — limited',
+                levelBad: '0-1 levels — no support',
+                levelHint: 'Ex: 64x64 → 6 lvl, 16x16 → 4 lvl, 20x20 → 1 lvl',
+                npotTitle: 'NPOT — Non-Power-of-Two',
+                npotDesc: 'Not power of 2 (20x20, 48x48)',
+                npotHint: 'Ex: 16x16, 64x64 — POT | 20x20, 30x30 — NPOT',
+                whatIsMipmap: 'What is Mipmap?',
+                mipmapDesc1: '<strong style="color: var(--accent);">Only block/item atlas affected</strong> (terrain.png, items.png). GUI uses separate atlas.',
+                mipmapDesc2: '<strong>How it works:</strong> Creates downscaled copies (÷2 each level) for distant objects. Reduces aliasing & improves FPS.',
+                mipmapDesc3: '<strong>Vanilla max:</strong> 4 levels. If any texture can\'t create full chain, mip level drops for <strong style="color: var(--warning);">ALL</strong> textures (see log: "limits mip level").',
+                mipmapDesc4: '<strong>Hi-res packs (256x+):</strong> May need mods (Better Mipmaps) to add more levels.',
+                results: '4. RESULTS',
+                ready: 'Ready',
+                emptyText: 'Drop a ZIP/JAR file to analyze textures',
+                analyzing: 'Analyzing textures...',
+                processing: 'Processing...',
+                criticalTextures: 'critical textures',
+                allGood: 'All good!',
+                sectionCritical: 'Critical (< 2 mip levels)',
+                sectionLimited: 'Limited (2-3 mip levels)',
+                sectionFull: 'Full support (4+ mip levels)',
+                sectionErrors: 'Errors',
+                copyBtn: 'Copy All',
+                copiedBtn: 'Copied!',
+                allGoodResult: 'All textures support full mipmapping!',
+                alertFormat: 'Please select a ZIP or JAR file',
+                errorReading: 'Error reading archive',
+                noSupport: 'no support',
+                limited: 'limited',
+                fullSupport: 'full'
+            },
+            ru: {
+                title: 'ResourcePack Mipmap Checker',
+                badge: 'Анализатор Mipmap',
+                selectArchive: '1. ВЫБОР АРХИВА',
+                dropText: 'Перетащите ZIP / JAR архив сюда',
+                dropSubtext: 'или нажмите для выбора файла',
+                formats: 'Поддерживается: .zip, .jar',
+                statistics: '2. СТАТИСТИКА',
+                critical: '<2 ур.',
+                limited: '2-3 ур.',
+                full: '4+ ур.',
+                total: 'Всего',
+                info: '3. ИНФОРМАЦИЯ',
+                mipmapLevels: 'Уровни Mipmap',
+                levelGood: '4+ уровней — полная поддержка',
+                levelWarn: '2-3 уровня — ограниченная',
+                levelBad: '0-1 уровней — нет поддержки',
+                levelHint: 'Пример: 64x64 → 6 ур., 16x16 → 4 ур., 20x20 → 1 ур.',
+                npotTitle: 'NPOT — Non-Power-of-Two',
+                npotDesc: 'Не степень двойки (20x20, 48x48)',
+                npotHint: 'Пример: 16x16, 64x64 — POT | 20x20, 30x30 — NPOT',
+                whatIsMipmap: 'Что такое Mipmap?',
+                mipmapDesc1: '<strong style="color: var(--accent);">Только атлас блоков/предметов</strong> (terrain.png, items.png). GUI использует отдельный атлас.',
+                mipmapDesc2: '<strong>Как работает:</strong> Создаёт уменьшенные копии (÷2 каждый уровень) для дальних объектов. Уменьшает рябь и улучшает FPS.',
+                mipmapDesc3: '<strong>Ванильный максимум:</strong> 4 уровня. Если текстура не может создать полную цепочку, уровень падает для <strong style="color: var(--warning);">ВСЕХ</strong> текстур (лог: "limits mip level").',
+                mipmapDesc4: '<strong>Hi-res паки (256x+):</strong> Могут требовать моды (Better Mipmaps) для добавления уровней.',
+                results: '4. РЕЗУЛЬТАТЫ',
+                ready: 'Готово',
+                emptyText: 'Перетащите ZIP/JAR файл для анализа текстур',
+                analyzing: 'Анализ текстур...',
+                processing: 'Обработка...',
+                criticalTextures: 'критичных текстур',
+                allGood: 'Всё хорошо!',
+                sectionCritical: 'Критичные (< 2 уровней mipmap)',
+                sectionLimited: 'Ограниченные (2-3 уровня mipmap)',
+                sectionFull: 'Полная поддержка (4+ уровней mipmap)',
+                sectionErrors: 'Ошибки',
+                copyBtn: 'Копировать всё',
+                copiedBtn: 'Скопировано!',
+                allGoodResult: 'Все текстуры поддерживают полный mipmapping!',
+                alertFormat: 'Пожалуйста, выберите ZIP или JAR файл',
+                errorReading: 'Ошибка чтения архива',
+                noSupport: 'нет поддержки',
+                limited: 'ограниченная',
+                fullSupport: 'полная'
+            }
+        };
+
+        let currentLang = 'en';
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ru' : 'en';
+            document.getElementById('langBtn').textContent = currentLang === 'en' ? 'RU' : 'EN';
+            document.documentElement.lang = currentLang;
+            applyTranslations();
+            renderResults(lastResults?.textures || [], lastResults?.errors || []);
+        }
+
+        function t(key) {
+            return translations[currentLang][key] || translations['en'][key] || key;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    el.placeholder = t(key);
+                } else {
+                    el.innerHTML = t(key);
+                }
+            });
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function countFullDivisionsByTwo(n) {
+            let count = 0;
+            while (n > 1 && n % 2 === 0) {
+                n = n / 2;
+                count++;
+            }
+            return count;
+        }
+
+        function countMipmapLevels(width, height) {
+            return Math.min(countFullDivisionsByTwo(width), countFullDivisionsByTwo(height));
+        }
+
+        function isPowerOfTwo(n) {
+            return n > 0 && (n & (n - 1)) === 0;
+        }
+
+        function getMipStatus(levels) {
+            if (levels >= 4) return { class: 'ok', text: `${levels} lvl` };
+            if (levels >= 2) return { class: 'warn', text: `${levels} lvl` };
+            return { class: 'bad', text: `${levels} lvl` };
+        }
+
+        let lastResults = null;
+
+        async function handleFile(file) {
+            const ext = file.name.toLowerCase();
+            if (!ext.endsWith('.zip') && !ext.endsWith('.jar')) {
+                alert(t('alertFormat'));
+                return;
+            }
+
+            resultsContainer.innerHTML = `
+                <div class="progress">
+                    <div class="spinner"></div>
+                    <div>${t('analyzing')}</div>
+                </div>
+            `;
+            statusText.textContent = t('processing');
+
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const textures = [];
+                const errors = [];
+
+                const pngFiles = Object.keys(zip.files).filter(name =>
+                    name.toLowerCase().endsWith('.png') && !zip.files[name].dir
+                );
+
+                for (const filename of pngFiles) {
+                    try {
+                        const fileData = await zip.files[filename].async('arraybuffer');
+                        const blob = new Blob([fileData], { type: 'image/png' });
+                        const img = await createImageBitmap(blob);
+
+                        textures.push({
+                            path: filename,
+                            width: img.width,
+                            height: img.height,
+                            mipLevels: countMipmapLevels(img.width, img.height),
+                            size: fileData.byteLength,
+                            npot: !isPowerOfTwo(img.width) || !isPowerOfTwo(img.height)
+                        });
+
+                        img.close();
+                    } catch (e) {
+                        errors.push({ path: filename, error: e.message });
+                    }
+                }
+
+                lastResults = { textures, errors };
+                renderResults(textures, errors);
+            } catch (e) {
+                resultsContainer.innerHTML = `
+                    <div class="empty-message" style="color: var(--error);">
+                        <div class="icon">❌</div>
+                        <div>${t('errorReading')}: ${e.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderResults(textures, errors) {
+            if (!textures.length && !errors.length) {
+                resultsContainer.innerHTML = `
+                    <div class="empty-message">
+                        <div class="icon">📦</div>
+                        <div>${t('emptyText')}</div>
+                    </div>
+                `;
+                return;
+            }
+
+            textures.sort((a, b) => {
+                if (a.mipLevels !== b.mipLevels) return a.mipLevels - b.mipLevels;
+                return a.path.localeCompare(b.path);
+            });
+
+            const badMip = textures.filter(t => t.mipLevels < 2);
+            const warnMip = textures.filter(t => t.mipLevels >= 2 && t.mipLevels < 4);
+            const goodMip = textures.filter(t => t.mipLevels >= 4);
+
+            document.getElementById('statBad').textContent = badMip.length;
+            document.getElementById('statWarn').textContent = warnMip.length;
+            document.getElementById('statGood').textContent = goodMip.length;
+            document.getElementById('statTotal').textContent = textures.length;
+
+            statusText.textContent = badMip.length > 0 ? `${badMip.length} ${t('criticalTextures')}` : t('allGood');
+
+            let html = '';
+
+            if (badMip.length > 0) {
+                html += renderSection(t('sectionCritical'), badMip, 'error');
+            }
+            if (warnMip.length > 0) {
+                html += renderSection(t('sectionLimited'), warnMip, 'warning');
+            }
+            if (goodMip.length > 0) {
+                html += renderSection(t('sectionFull'), goodMip, 'success');
+            }
+            if (errors.length > 0) {
+                html += `
+                    <div class="results-section">
+                        <div class="section-header error" onclick="toggleSection(this)">
+                            <span class="section-title">❌ ${t('sectionErrors')} (${errors.length})</span>
+                            <span class="section-count">${errors.length}</span>
+                            <span class="section-toggle">▼</span>
+                        </div>
+                        <div class="section-content">
+                            ${errors.map(e => `
+                                <div class="file-item">
+                                    <span class="file-path">${e.path}</span>
+                                    <span class="file-size" style="color: var(--error);">${e.error}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (html === '') {
+                html = `
+                    <div class="success-message">
+                        <div class="icon">🎉</div>
+                        <div class="text">${t('allGoodResult')}</div>
+                    </div>
+                `;
+            }
+
+            resultsContainer.innerHTML = html;
+        }
+
+        function toggleSection(header) {
+            header.classList.toggle('open');
+            header.nextElementSibling.classList.toggle('open');
+        }
+
+        function renderSection(title, items, type) {
+            const copyText = items.map(item => {
+                const npotTag = item.npot ? ' [NPOT]' : '';
+                return `${item.path} (${item.width}x${item.height}${npotTag}, ${formatBytes(item.size)}, ${item.mipLevels} mip lvls)`;
+            }).join('\n');
+
+            return `
+                <div class="results-section">
+                    <div class="section-header ${type} open" onclick="toggleSection(this)">
+                        <span class="section-title">${title}</span>
+                        <span class="section-count">${items.length}</span>
+                        <span class="section-toggle">▼</span>
+                    </div>
+                    <div class="section-content open">
+                        ${items.map(item => {
+                            const mipStatus = getMipStatus(item.mipLevels);
+                            const npotBadge = item.npot ? '<span class="file-npot">NPOT</span>' : '';
+                            return `
+                                <div class="file-item">
+                                    <span class="file-path">${item.path}</span>
+                                    <span class="file-dims">${item.width}x${item.height}</span>
+                                    <span class="file-size">${formatBytes(item.size)}</span>
+                                    <span class="file-mip ${mipStatus.class}">${mipStatus.text}</span>
+                                    ${npotBadge}
+                                </div>
+                            `;
+                        }).join('')}
+                        <button class="copy-btn" data-text="${copyText.replace(/"/g, '&quot;')}">
+                            📋 ${t('copyBtn')}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const statusText = document.getElementById('statusText');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('copy-btn')) {
+                const text = e.target.dataset.text;
+                navigator.clipboard.writeText(text).then(() => {
+                    e.target.textContent = '✓ ' + t('copiedBtn');
+                    e.target.classList.add('copied');
+                    setTimeout(() => {
+                        e.target.textContent = '📋 ' + t('copyBtn');
+                        e.target.classList.remove('copied');
+                    }, 1500);
+                });
+            }
+        });
+
+        applyTranslations();
+    </script>
+</body>
+</html>
